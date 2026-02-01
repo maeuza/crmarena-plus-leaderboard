@@ -51,10 +51,8 @@ def main():
     hosts_to_wait = ["green-agent"] + [p["name"] for p in parts_list]
     hosts_str = ", ".join([f"'{h}'" for h in hosts_to_wait])
 
-    # SCRIPT DE REPARACIÓN Y EJECUCIÓN
-    # 1. Espera a los agentes.
-    # 2. Instala httpx y dependencias necesarias (pydantic, etc) que falten.
-    # 3. Ejecuta la evaluación.
+    # SCRIPT DE REPARACIÓN INTEGRAL
+    # Instalamos el set estándar de AgentBeats para evitar goteo de errores
     compose_content = f"""services:
   green-agent:
     image: {green_img}
@@ -90,8 +88,8 @@ def main():
                 except:
                     time.sleep(2)
         "
-        echo "-- Instalando dependencias faltantes (httpx, pydantic)... --"
-        python3 -m pip install httpx pydantic tomli requests
+        echo "-- Reparando entorno (Instalando dependencias)... --"
+        python3 -m pip install httpx pydantic tomli requests python-dotenv rich
         
         echo "-- Iniciando Evaluación CRMArena... --"
         python3 /app/src/agentbeats/run_scenario.py /app/scenario.toml /app/output/results.json
@@ -108,7 +106,7 @@ networks:
         for p in parts_list:
             f.write(f'\n[[participants]]\nrole = "{p["name"]}"\nendpoint = "http://{p["name"]}:9009"\n')
 
-    print("🛠️  Docker Compose generado con auto-instalación de dependencias.")
+    print("🛠️  Docker Compose actualizado con el combo de dependencias (dotenv incluido).")
 
 if __name__ == "__main__":
     main()
