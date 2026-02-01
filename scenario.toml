@@ -1,10 +1,8 @@
 [green_agent]
-# Tu ID de Agente Evaluador oficial
 agentbeats_id = "019c1809-f7db-7342-9a9a-a7bdbf92e319"
 env = { GOOGLE_API_KEY = "${GOOGLE_API_KEY}", AGENT_ROLE = "green" }
 
 [[participants]]
-# Se deja vacío para que tú envíes la solución desde tu repositorio
 agentbeats_id = ""
 name = "salesforce_participant"
 env = { GOOGLE_API_KEY = "${GOOGLE_API_KEY}", AGENT_ROLE = "purple" }
