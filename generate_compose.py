@@ -31,10 +31,14 @@ AGENTBEATS_API_URL = "https://agentbeats.dev/api/agents"
 
 
 def fetch_agent_info(agentbeats_id: str) -> dict:
-    """Fetch agent info from agentbeats.dev API."""
+    """Fetch agent info from agentbeats.dev API with headers for GitHub Actions."""
     url = f"{AGENTBEATS_API_URL}/{agentbeats_id}"
+    # Se añade User-Agent para evitar que el servidor bloquee la petición de GitHub
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+    }
     try:
-        response = requests.get(url, timeout=30)
+        response = requests.get(url, headers=headers, timeout=30)
         response.raise_for_status()
         return response.json()
     except requests.exceptions.HTTPError as e:
@@ -42,6 +46,8 @@ def fetch_agent_info(agentbeats_id: str) -> dict:
         sys.exit(1)
     except requests.exceptions.JSONDecodeError:
         print(f"Error: Invalid JSON response for agent {agentbeats_id}")
+        # Si falla el JSON, imprimimos el contenido para debug
+        print(f"Server response content: {response.text[:200]}")
         sys.exit(1)
     except requests.exceptions.RequestException as e:
         print(f"Error: Request failed for agent {agentbeats_id}: {e}")
@@ -115,12 +121,12 @@ endpoint = "http://green-agent:{green_port}"
 {config}"""
 
 def resolve_image(agent: dict, name: str) -> None:
-    """Resolve docker image for an agent, either from 'image' field or agentbeats API."""
+    """Resolve docker image for an agent using official flow."""
     has_image = "image" in agent
     has_id = "agentbeats_id" in agent
 
     if has_image and has_id:
-        print(f"Error: {name} has both 'image' and 'agentbeats_id' - use one or the other")
+        print(f"Error: {name} has both 'image' and 'agentbeats_id'")
         sys.exit(1)
     elif has_image:
         if os.environ.get("GITHUB_ACTIONS"):
@@ -132,8 +138,9 @@ def resolve_image(agent: dict, name: str) -> None:
         agent["image"] = info["docker_image"]
         print(f"Resolved {name} image: {agent['image']}")
     else:
-        print(f"Error: {name} must have either 'image' or 'agentbeats_id' field")
+        print(f"Error: {name} must have either 'image' or 'agentbeats_id'")
         sys.exit(1)
+
 
 def parse_scenario(scenario_path: Path) -> dict[str, Any]:
     toml_data = scenario_path.read_text()
@@ -143,13 +150,10 @@ def parse_scenario(scenario_path: Path) -> dict[str, Any]:
     resolve_image(green, "green_agent")
 
     participants = data.get("participants", [])
-
-    # Check for duplicate participant names
     names = [p.get("name") for p in participants]
     duplicates = [name for name in set(names) if names.count(name) > 1]
     if duplicates:
         print(f"Error: Duplicate participant names found: {', '.join(duplicates)}")
-        print("Each participant must have a unique name.")
         sys.exit(1)
 
     for participant in participants:
@@ -176,7 +180,6 @@ def format_depends_on(services: list) -> str:
 def generate_docker_compose(scenario: dict[str, Any]) -> str:
     green = scenario["green_agent"]
     participants = scenario.get("participants", [])
-
     participant_names = [p["name"] for p in participants]
 
     participant_services = "\n".join([
@@ -229,16 +232,12 @@ def generate_a2a_scenario(scenario: dict[str, Any]) -> str:
 def generate_env_file(scenario: dict[str, Any]) -> str:
     green = scenario["green_agent"]
     participants = scenario.get("participants", [])
-
     secrets = set()
-
-    # Extract secrets from ${VAR} patterns in env values
     env_var_pattern = re.compile(r'\$\{([^}]+)\}')
 
     for value in green.get("env", {}).values():
         for match in env_var_pattern.findall(str(value)):
             secrets.add(match)
-
     for p in participants:
         for value in p.get("env", {}).values():
             for match in env_var_pattern.findall(str(value)):
@@ -247,10 +246,7 @@ def generate_env_file(scenario: dict[str, Any]) -> str:
     if not secrets:
         return ""
 
-    lines = []
-    for secret in sorted(secrets):
-        lines.append(f"{secret}=")
-
+    lines = [f"{secret}=" for secret in sorted(secrets)]
     return "\n".join(lines) + "\n"
 
 
