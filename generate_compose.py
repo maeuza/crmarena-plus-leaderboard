@@ -37,22 +37,29 @@ services:
     entrypoint: ["/bin/sh", "-c"]
     command: 
       - |
-        # Instalación silenciosa para no llenar el log
+        set -e
+        echo "📦 Instalando dependencias..."
         python3 -m pip install --user httpx pydantic python-dotenv rich tomli requests -q
         
+        echo "📂 Preparando repositorio de evaluación..."
         cd /tmp
-        # Clonamos el repo de la librería
         git clone https://github.com/agentbeats/agentified-a2a.git a2a_repo -q
         
         export PYTHONPATH=/app/src:/home/agentbeats/.local/lib/python3.10/site-packages:/tmp/a2a_repo/src
         
-        echo "🚀 Esperando 15 segundos a que los agentes estabilicen..."
-        sleep 15
+        echo "⏳ Esperando estabilidad de red (20s)..."
+        sleep 20
         
-        echo "🎯 Iniciando evaluación..."
-        python3 /app/src/agentbeats/run_scenario.py /app/scenario.toml /app/output/results.json
-        echo "✅ Proceso completado."
+        echo "🚀 Probando conexión a los agentes..."
+        curl -s http://green-agent:9009/health || echo "⚠️ Green Agent no responde"
+        curl -s http://salesforce_participant:9009/health || echo "⚠️ Salesforce Agent no responde"
 
+        echo "🎯 Ejecutando evaluación real..."
+        python3 /app/src/agentbeats/run_scenario.py /app/scenario.toml /app/output/results.json
+        
+        echo "📊 Tamaño final del archivo:"
+        ls -lh /app/output/results.json
+        cat /app/output/results.json
 networks:
   agent-network:
     driver: bridge
@@ -60,7 +67,7 @@ networks:
     
     with open("docker-compose.yml", "w") as f:
         f.write(compose_content.strip())
-        
+    
     with open("a2a-scenario.toml", "w") as f:
         f.write('''
 [green_agent]
@@ -70,8 +77,6 @@ endpoint = "http://green-agent:9009"
 role = "salesforce_participant"
 endpoint = "http://salesforce_participant:9009"
 ''')
-
-    print("✅ docker-compose.yml listo.")
 
 if __name__ == "__main__":
     main()
