@@ -6,64 +6,56 @@ def main():
     parser.add_argument("--scenario", type=Path, required=True)
     args = parser.parse_args()
 
-    compose_content = '''
+    # El YAML ahora es más sencillo para evitar errores de red 'undefined'
+    compose_content = """
 services:
   green-agent:
     image: ghcr.io/maeuza/agentified-crmarena:latest
-    container_name: green-agent
     environment:
       - AGENT_ROLE=green
       - GOOGLE_API_KEY=${GOOGLE_API_KEY}
-    networks:
-      - agent-network
 
   salesforce_participant:
     image: ghcr.io/maeuza/agentified-crmarena:latest
-    container_name: salesforce_participant
     environment:
       - AGENT_ROLE=purple
       - GOOGLE_API_KEY=${GOOGLE_API_KEY}
-    networks:
-      - agent-network
 
   agentbeats-client:
     image: ghcr.io/agentbeats/agentbeats-client:v1.0.0
-    container_name: agentbeats-client
     volumes:
       - ./a2a-scenario.toml:/app/scenario.toml
       - ./output:/app/output
-    networks:
-      - agent-network
     entrypoint: ["/bin/sh", "-c"]
     command: 
       - |
-        # 1. Instalar dependencias necesarias
+        # 1. Instalar dependencias de Python
         python3 -m pip install --user httpx pydantic python-dotenv rich tomli requests -q
 
-        # 2. Descargar a2a usando PYTHON (ya que no hay curl ni git)
+        # 2. Descargar la librería a2a usando el propio Python
         cd /tmp
-        echo "🐍 Descargando librería usando Python..."
         python3 -c "import urllib.request; urllib.request.urlretrieve('https://github.com/agentbeats/agentified-a2a/archive/refs/heads/main.tar.gz', 'a2a.tar.gz')"
-        
-        # 3. Descomprimir
         tar -xzf a2a.tar.gz
-        mkdir -p /tmp/libraries
-        cp -r agentified-a2a-main/src/a2a /tmp/libraries/
         
-        # 4. Configurar rutas
-        export PYTHONPATH=/app/src:/home/agentbeats/.local/lib/python3.10/site-packages:/tmp/libraries
+        # 3. Crear carpeta de librerías y mover el código
+        mkdir -p /tmp/lib
+        cp -r agentified-a2a-main/src/a2a /tmp/lib/
         
-        echo "⏳ Esperando estabilidad de agentes..."
+        # 4. Configurar el camino para que Python lo encuentre
+        export PYTHONPATH=/app/src:/home/agentbeats/.local/lib/python3.10/site-packages:/tmp/lib
+        
+        echo "⏳ Esperando agentes..."
         sleep 15
         
-        echo "🎯 Iniciando evaluación..."
-        # Si esto falla, el contenedor saldrá con error (no pusimos el echo al final esta vez)
+        echo "🚀 Ejecutando evaluación..."
         python3 /app/src/agentbeats/run_scenario.py /app/scenario.toml /app/output/results.json
-'''
+"""
     
     with open("docker-compose.yml", "w") as f:
         f.write(compose_content.strip())
         
+    # El archivo de escenario ahora usa los nombres de servicio por defecto de Docker Compose
+    # que cuando no defines red, es el nombre del servicio tal cual.
     with open("a2a-scenario.toml", "w") as f:
         f.write('''
 [green_agent]
