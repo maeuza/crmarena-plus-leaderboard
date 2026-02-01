@@ -6,7 +6,6 @@ def main():
     parser.add_argument("--scenario", type=Path, required=True)
     args = parser.parse_args()
 
-    # Definimos el contenido asegurando que 'networks' esté al nivel raíz (sin espacios al inicio)
     compose_content = '''
 services:
   green-agent:
@@ -38,11 +37,21 @@ services:
     entrypoint: ["/bin/sh", "-c"]
     command: 
       - |
-        python3 -m pip install --user httpx pydantic python-dotenv rich tomli requests
+        # Instalación silenciosa para no llenar el log
+        python3 -m pip install --user httpx pydantic python-dotenv rich tomli requests -q
+        
         cd /tmp
-        git clone https://github.com/agentbeats/agentified-a2a.git a2a_repo
+        # Clonamos el repo de la librería
+        git clone https://github.com/agentbeats/agentified-a2a.git a2a_repo -q
+        
         export PYTHONPATH=/app/src:/home/agentbeats/.local/lib/python3.10/site-packages:/tmp/a2a_repo/src
+        
+        echo "🚀 Esperando 15 segundos a que los agentes estabilicen..."
+        sleep 15
+        
+        echo "🎯 Iniciando evaluación..."
         python3 /app/src/agentbeats/run_scenario.py /app/scenario.toml /app/output/results.json
+        echo "✅ Proceso completado."
 
 networks:
   agent-network:
@@ -62,7 +71,7 @@ role = "salesforce_participant"
 endpoint = "http://salesforce_participant:9009"
 ''')
 
-    print("✅ docker-compose.yml generado con red corregida.")
+    print("✅ docker-compose.yml listo.")
 
 if __name__ == "__main__":
     main()
