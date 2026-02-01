@@ -1,8 +1,6 @@
 import argparse
 import os
-import sys
 from pathlib import Path
-from typing import Dict
 import requests
 
 try:
@@ -31,7 +29,6 @@ def main():
     with open(args.scenario, "rb") as f:
         data = toml.load(f)
 
-    # Resolver imágenes de agentes
     green_img = data["green_agent"].get("image") or fetch_agent_image(data["green_agent"].get("agentbeats_id", ""))
     
     parts_list = []
@@ -51,27 +48,12 @@ def main():
       - agent-network
 """
 
-    # SCRIPT DE ESPERA EN PYTHON (Sustituye a curl)
-    # Este script intenta abrir un socket TCP al puerto 9009 de cada agente.
-    wait_logic = (
-        "import socket, time; "
-        "def wait(host): "
-        "  print(f'-- Esperando a {host}:9009 --'); "
-        "  while True: "
-        "    try: "
-        "      with socket.create_connection((host, 9009), timeout=1): "
-        "        print(f'-- {host} conectado! --'); break "
-        "    except: "
-        "      time.sleep(2); "
-    )
-    
-    # Construimos el comando final
-    python_wait_cmd = f"{wait_logic}wait('green-agent'); "
-    for p in parts_list:
-        python_wait_cmd += f"wait('{p['name']}'); "
-    
-    full_command = f"python3 -c \"{python_wait_cmd}\" && agentbeats-client /app/scenario.toml /app/output/results.json"
+    # Definimos los hosts a esperar
+    hosts_to_wait = ["green-agent"] + [p["name"] for p in parts_list]
+    hosts_str = ", ".join([f"'{h}'" for h in hosts_to_wait])
 
+    # Usamos formato multi-línea para el comando de Docker
+    # Esto evita el error de "did not find expected ','"
     compose_content = f"""services:
   green-agent:
     image: {green_img}
@@ -85,12 +67,27 @@ def main():
   agentbeats-client:
     image: ghcr.io/agentbeats/agentbeats-client:v1.0.0
     container_name: agentbeats-client
-    entrypoint: ["sh", "-c", "{full_command}"]
     volumes:
       - ./a2a-scenario.toml:/app/scenario.toml
       - ./output:/app/output
     networks:
       - agent-network
+    entrypoint: ["sh", "-c"]
+    command: 
+      - |
+        python3 -c "
+        import socket, time
+        for host in [{hosts_str}]:
+            print(f'-- Esperando a {{host}}:9009 --')
+            while True:
+                try:
+                    with socket.create_connection((host, 9009), timeout=1):
+                        print(f'-- {{host}} listo! --')
+                        break
+                except:
+                    time.sleep(2)
+        "
+        agentbeats-client /app/scenario.toml /app/output/results.json
 
 networks:
   agent-network:
@@ -99,13 +96,12 @@ networks:
 
     Path("docker-compose.yml").write_text(compose_content)
 
-    # Generar el archivo de escenario para el cliente
     with open("a2a-scenario.toml", "w") as f:
         f.write('[green_agent]\nendpoint = "http://green-agent:9009"\n')
         for p in parts_list:
             f.write(f'\n[[participants]]\nrole = "{p["name"]}"\nendpoint = "http://{p["name"]}:9009"\n')
 
-    print("Archivo docker-compose.yml generado con éxito (Python-based wait).")
+    print("docker-compose.yml generado con formato multi-línea seguro.")
 
 if __name__ == "__main__":
     main()
