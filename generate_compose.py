@@ -6,6 +6,7 @@ def main():
     parser.add_argument("--scenario", type=Path, required=True)
     args = parser.parse_args()
 
+    # Definimos el contenido asegurando que 'networks' esté al nivel raíz (sin espacios al inicio)
     compose_content = '''
 services:
   green-agent:
@@ -14,7 +15,8 @@ services:
     environment:
       - AGENT_ROLE=green
       - GOOGLE_API_KEY=${GOOGLE_API_KEY}
-    networks: [agent-network]
+    networks:
+      - agent-network
 
   salesforce_participant:
     image: ghcr.io/maeuza/agentified-crmarena:latest
@@ -22,7 +24,8 @@ services:
     environment:
       - AGENT_ROLE=purple
       - GOOGLE_API_KEY=${GOOGLE_API_KEY}
-    networks: [agent-network]
+    networks:
+      - agent-network
 
   agentbeats-client:
     image: ghcr.io/agentbeats/agentbeats-client:v1.0.0
@@ -30,23 +33,20 @@ services:
     volumes:
       - ./a2a-scenario.toml:/app/scenario.toml
       - ./output:/app/output
-    networks: [agent-network]
+    networks:
+      - agent-network
     entrypoint: ["/bin/sh", "-c"]
     command: 
       - |
-        echo "-- Instalando dependencias básicas --"
         python3 -m pip install --user httpx pydantic python-dotenv rich tomli requests
-        
-        echo "-- Clonando código de A2A --"
         cd /tmp
-        # Clonamos directamente con git para evitar el error 404 de urllib
         git clone https://github.com/agentbeats/agentified-a2a.git a2a_repo
-        
-        echo "-- Ejecutando Arena --"
-        # Apuntamos a la carpeta src dentro del repo clonado
         export PYTHONPATH=/app/src:/home/agentbeats/.local/lib/python3.10/site-packages:/tmp/a2a_repo/src
-        
         python3 /app/src/agentbeats/run_scenario.py /app/scenario.toml /app/output/results.json
+
+networks:
+  agent-network:
+    driver: bridge
 '''
     
     with open("docker-compose.yml", "w") as f:
@@ -62,7 +62,7 @@ role = "salesforce_participant"
 endpoint = "http://salesforce_participant:9009"
 ''')
 
-    print("✅ docker-compose.yml generado.")
+    print("✅ docker-compose.yml generado con red corregida.")
 
 if __name__ == "__main__":
     main()
