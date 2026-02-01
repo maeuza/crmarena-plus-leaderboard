@@ -115,7 +115,7 @@ services:
   agentbeats-client:
     image: ghcr.io/agentbeats/agentbeats-client:v1.0.0
     container_name: agentbeats-client
-    command: ["python3", "client_cli.py", "/app/scenario.toml", "/app/output/output.json"]
+    command: ["client_cli.py", "/app/scenario.toml", "/app/output/output.json"]
     volumes:
       - ./a2a-scenario.toml:/app/scenario.toml
       - ./output:/app/output
