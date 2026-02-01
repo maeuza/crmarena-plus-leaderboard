@@ -15,24 +15,31 @@ def main():
     with open(args.scenario, "rb") as f:
         data = toml.load(f)
 
-    compose = """version: "3.9"
+    green = data["green_agent"]
+    green_image = green["image"]
+
+    participant = data["participants"][0]
+    participant_name = participant["name"]
+    participant_image = participant["image"]
+
+    compose = f"""version: "3.9"
 
 services:
   green-agent:
-    build: .
+    image: {green_image}
     container_name: green-agent
     environment:
       - AGENT_ROLE=green
-      - PARTICIPANT_URL=http://salesforce_participant:8000
+      - PARTICIPANT_URL=http://{participant_name}:8000
     ports:
       - "8000:8000"
 
-  salesforce_participant:
-    build: .
-    container_name: salesforce_participant
+  {participant_name}:
+    image: {participant_image}
+    container_name: {participant_name}
     environment:
       - AGENT_ROLE=purple
-      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - GOOGLE_API_KEY=${{GOOGLE_API_KEY}}
     ports:
       - "8001:8000"
 
@@ -45,16 +52,14 @@ services:
     Path("docker-compose.yml").write_text(compose)
 
     with open("a2a-scenario.toml", "w") as f:
-        f.write(
-            """
+        f.write(f"""
 [green_agent]
 endpoint = "http://green-agent:8000"
 
 [[participants]]
-role = "salesforce_participant"
-endpoint = "http://salesforce_participant:8000"
-"""
-        )
+role = "{participant_name}"
+endpoint = "http://{participant_name}:8000"
+""")
 
     print("✅ docker-compose.yml y a2a-scenario.toml generados correctamente")
 
