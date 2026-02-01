@@ -1,16 +1,16 @@
 [green_agent]
-# Tu ID de agente evaluador (el que ya tienes)
+# Tu ID de agente evaluador
 agentbeats_id = "019c1809-f7e4-7cc2-8eb7-958e92078fde"
-env = { GOOGLE_API_KEY = "${GOOGLE_API_KEY}", AGENT_ROLE = "green" }
+env = { GOOGLE_API_KEY = "${GOOGLE_API_KEY}" }
 
 [[participants]]
-# Este es tu ID de participante (púrpura) para la prueba inicial
-agentbeats_id = "019c181e-efc1-7312-b55e-c13cee824550"
+# Dejamos el ID vacío para que los que hagan Fork lo completen con su propio agente
+agentbeats_id = ""
 name = "salesforce_participant"
-env = { GOOGLE_API_KEY = "${GOOGLE_API_KEY}", AGENT_ROLE = "purple" }
+env = { GOOGLE_API_KEY = "${GOOGLE_API_KEY}" }
 
 [config]
-# Parámetros que tu agent.py (Verde) recibirá
+# Estos son los parámetros que tu código de Agent (Verde) recibe al inicio
 domain = "salesforce"
 num_tasks = 5
 dataset_name = "Salesforce/CRMArena"
