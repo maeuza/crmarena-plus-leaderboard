@@ -78,19 +78,12 @@ def main():
     networks:
       - agent-network"""
 
-    # Generamos la lista de dependencias para el cliente
-    depends_on_logic = "\\n".join([f"      {name}:\\n        condition: service_healthy" for name in ["green-agent"] + participant_names])
-    # Limpiamos los saltos de línea para el f-string
-    depends_on_block = f"""
-    depends_on:
-      green-agent:
-        condition: service_healthy"""
+    # Bloque de dependencias
+    depends_on_block = "\n    depends_on:\n      green-agent:\n        condition: service_healthy"
     for name in participant_names:
-        depends_on_block += f"""
-      {name}:
-        condition: service_healthy"""
+        depends_on_block += f"\n      {name}:\n        condition: service_healthy"
 
-    # Estructura completa del docker-compose.yml
+    # Estructura del docker-compose.yml
     compose = f"""services:
   green-agent:
     image: {green['image']}
@@ -114,8 +107,7 @@ def main():
     command: ["/app/scenario.toml", "/app/output/results.json"]
     volumes:
       - ./a2a-scenario.toml:/app/scenario.toml
-      - ./output:/app/output
-    {depends_on_block}
+      - ./output:/app/output{depends_on_block}
     networks:
       - agent-network
 
@@ -126,18 +118,18 @@ networks:
 
     Path("docker-compose.yml").write_text(compose)
 
-    # Generar a2a-scenario.toml
+    # Generar a2a-scenario.toml usando comillas simples para evitar SyntaxError
     with open("a2a-scenario.toml", "w") as f:
-        f.write("[green_agent]\\n")
-        f.write("endpoint = \\"http://green-agent:9009\\"\\n")
+        f.write('[green_agent]\n')
+        f.write('endpoint = "http://green-agent:9009"\n')
         for p in parts:
-            f.write("\\n[[participants]]\\n")
-            f.write(f"role = \\"{p['name']}\\"\\n")
-            f.write(f"endpoint = \\"http://{p['name']}:9009\\"\\n")
+            f.write('\n[[participants]]\n')
+            f.write(f'role = "{p["name"]}"\n')
+            f.write(f'endpoint = "http://{p["name"]}:9009"\n')
             if p.get("agentbeats_id"):
-                f.write(f"agentbeats_id = \\"{p['agentbeats_id']}\\"\\n")
+                f.write(f'agentbeats_id = "{p["agentbeats_id"]}"\n')
 
-    log("Generación exitosa con Healthchecks.")
+    log("Generación exitosa.")
 
 if __name__ == "__main__":
     main()
