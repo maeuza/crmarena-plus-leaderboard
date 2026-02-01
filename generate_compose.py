@@ -19,27 +19,18 @@ def log(msg: str):
 
 def fetch_agent_image(agentbeats_id: str) -> str:
     url = f"{AGENTBEATS_API_URL}/{agentbeats_id.strip()}"
-    headers = {
-        "Accept": "application/json",
-        "User-Agent": "AgentBeats-Hardening/1.0",
-    }
+    headers = {"Accept": "application/json", "User-Agent": "AgentBeats-Hardening/1.0"}
     try:
         r = requests.get(url, headers=headers, timeout=TIMEOUT)
         if r.status_code == 200:
-            data = r.json()
-            return data.get("docker_image", DEFAULT_IMAGE)
+            return r.json().get("docker_image", DEFAULT_IMAGE)
         return DEFAULT_IMAGE
-    except Exception as e:
-        log(f"Fallback para {agentbeats_id}: {e}")
+    except:
         return DEFAULT_IMAGE
 
 def resolve_agent(agent: Dict, name: str):
-    if agent.get("image"):
-        return
-    if agent.get("agentbeats_id"):
-        agent["image"] = fetch_agent_image(agent["agentbeats_id"])
-    else:
-        agent["image"] = DEFAULT_IMAGE
+    if not agent.get("image"):
+        agent["image"] = fetch_agent_image(agent["agentbeats_id"]) if agent.get("agentbeats_id") else DEFAULT_IMAGE
 
 def main():
     parser = argparse.ArgumentParser()
@@ -50,16 +41,11 @@ def main():
         data = toml.load(f)
 
     resolve_agent(data["green_agent"], "green_agent")
+    participant_names = []
+    participant_services = ""
+    
     for p in data.get("participants", []):
         resolve_agent(p, p.get("name", "participant"))
-
-    green = data["green_agent"]
-    parts = data.get("participants", [])
-
-    # Generamos los servicios de los participantes con Healthcheck
-    participant_services = ""
-    participant_names = []
-    for p in parts:
         p_name = p.get('name', 'participant')
         participant_names.append(p_name)
         participant_services += f"""
@@ -73,20 +59,21 @@ def main():
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9009/.well-known/agent-card.json"]
       interval: 5s
-      timeout: 3s
-      retries: 10
+      timeout: 5s
+      retries: 5
     networks:
-      - agent-network"""
+      - agent-network
+"""
 
-    # Bloque de dependencias
-    depends_on_block = "\n    depends_on:\n      green-agent:\n        condition: service_healthy"
-    for name in participant_names:
-        depends_on_block += f"\n      {name}:\n        condition: service_healthy"
+    # Construcción limpia de depends_on
+    deps = ["green-agent"] + participant_names
+    depends_on_yaml = "    depends_on:"
+    for d in deps:
+        depends_on_yaml += f"\n      {d}:\n        condition: service_healthy"
 
-    # Estructura del docker-compose.yml
     compose = f"""services:
   green-agent:
-    image: {green['image']}
+    image: {data['green_agent']['image']}
     container_name: green-agent
     environment:
       - PYTHONUNBUFFERED=1
@@ -95,19 +82,19 @@ def main():
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9009/.well-known/agent-card.json"]
       interval: 5s
-      timeout: 3s
-      retries: 10
+      timeout: 5s
+      retries: 5
     networks:
       - agent-network
 {participant_services}
-
   agentbeats-client:
     image: ghcr.io/agentbeats/agentbeats-client:v1.0.0
     container_name: agentbeats-client
     command: ["/app/scenario.toml", "/app/output/results.json"]
     volumes:
       - ./a2a-scenario.toml:/app/scenario.toml
-      - ./output:/app/output{depends_on_block}
+      - ./output:/app/output
+{depends_on_yaml}
     networks:
       - agent-network
 
@@ -115,21 +102,15 @@ networks:
   agent-network:
     driver: bridge
 """
-
     Path("docker-compose.yml").write_text(compose)
 
-    # Generar a2a-scenario.toml usando comillas simples para evitar SyntaxError
     with open("a2a-scenario.toml", "w") as f:
-        f.write('[green_agent]\n')
-        f.write('endpoint = "http://green-agent:9009"\n')
-        for p in parts:
-            f.write('\n[[participants]]\n')
-            f.write(f'role = "{p["name"]}"\n')
-            f.write(f'endpoint = "http://{p["name"]}:9009"\n')
-            if p.get("agentbeats_id"):
-                f.write(f'agentbeats_id = "{p["agentbeats_id"]}"\n')
+        f.write('[green_agent]\nendpoint = "http://green-agent:9009"\n')
+        for p in data.get("participants", []):
+            f.write(f'\n[[participants]]\nrole = "{p["name"]}"\nendpoint = "http://{p["name"]}:9009"\n')
+            if p.get("agentbeats_id"): f.write(f'agentbeats_id = "{p["agentbeats_id"]}"\n')
 
-    log("Generación exitosa.")
+    log("Generación completada.")
 
 if __name__ == "__main__":
     main()
