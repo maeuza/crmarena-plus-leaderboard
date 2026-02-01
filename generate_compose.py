@@ -6,7 +6,6 @@ def main():
     parser.add_argument("--scenario", type=Path, required=True)
     args = parser.parse_args()
 
-    # Este bloque define cómo se comportarán los 3 contenedores
     compose_content = '''
 services:
   green-agent:
@@ -38,40 +37,33 @@ services:
     entrypoint: ["/bin/sh", "-c"]
     command: 
       - |
-        # 1. Instalar herramientas de Python que faltan
+        # 1. Instalar dependencias necesarias
         python3 -m pip install --user httpx pydantic python-dotenv rich tomli requests -q
 
-        # 2. Descargar la pieza 'a2a' de GitHub manualmente (porque no hay git)
+        # 2. Descargar a2a usando PYTHON (ya que no hay curl ni git)
         cd /tmp
-        curl -L https://github.com/agentbeats/agentified-a2a/archive/refs/heads/main.tar.gz -o a2a.tar.gz
-        tar -xzf a2a.tar.gz
+        echo "🐍 Descargando librería usando Python..."
+        python3 -c "import urllib.request; urllib.request.urlretrieve('https://github.com/agentbeats/agentified-a2a/archive/refs/heads/main.tar.gz', 'a2a.tar.gz')"
         
-        # 3. Mover el código a una carpeta que Python pueda encontrar
+        # 3. Descomprimir
+        tar -xzf a2a.tar.gz
         mkdir -p /tmp/libraries
         cp -r agentified-a2a-main/src/a2a /tmp/libraries/
         
-        # 4. Decirle a Python dónde buscar todo
+        # 4. Configurar rutas
         export PYTHONPATH=/app/src:/home/agentbeats/.local/lib/python3.10/site-packages:/tmp/libraries
         
-        echo "⏳ Esperando a que los agentes despierten..."
+        echo "⏳ Esperando estabilidad de agentes..."
         sleep 15
         
         echo "🎯 Iniciando evaluación..."
+        # Si esto falla, el contenedor saldrá con error (no pusimos el echo al final esta vez)
         python3 /app/src/agentbeats/run_scenario.py /app/scenario.toml /app/output/results.json
-        
-        echo "✅ Finalizado. Revisando archivo..."
-        ls -lh /app/output/results.json
-
-networks:
-  agent-network:
-    driver: bridge
 '''
     
-    # Generar el archivo de configuración de Docker
     with open("docker-compose.yml", "w") as f:
         f.write(compose_content.strip())
         
-    # Generar el archivo de instrucciones para los agentes
     with open("a2a-scenario.toml", "w") as f:
         f.write('''
 [green_agent]
@@ -81,8 +73,6 @@ endpoint = "http://green-agent:9009"
 role = "salesforce_participant"
 endpoint = "http://salesforce_participant:9009"
 ''')
-
-    print("✅ Archivos de configuración generados con éxito.")
 
 if __name__ == "__main__":
     main()
