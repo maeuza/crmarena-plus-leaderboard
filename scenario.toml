@@ -1,12 +1,15 @@
 [green_agent]
-agentbeats_id = "019c1809-f7e4-7cc2-8eb7-958e92078fde"
+# Tu ID de Agente Evaluador (Green) actualizado y correcto
+agentbeats_id = "019c1809-f7db-7342-9a9a-a7bdbf92e319"
 env = { GOOGLE_API_KEY = "${GOOGLE_API_KEY}", AGENT_ROLE = "green" }
 
 [[participants]]
-agentbeats_id = "019c181e-efc1-7312-b55e-c13cee824550"
+# Se deja vacío para que TÚ seas el participante evaluado
+agentbeats_id = ""
 name = "salesforce_participant"
 env = { GOOGLE_API_KEY = "${GOOGLE_API_KEY}", AGENT_ROLE = "purple" }
 
 [config]
 domain = "salesforce"
 num_tasks = 1
+dataset_name = "Salesforce/CRMArena"
