@@ -19,17 +19,17 @@ def main():
     green_image = green["image"]
 
     participant = data["participants"][0]
-    participant_name = participant["name"]
     participant_image = participant["image"]
+    participant_name = participant["name"]
 
-    compose = f"""version: "3.9"
-
+    compose = f"""
 services:
   green-agent:
     image: {green_image}
     container_name: green-agent
     environment:
       - AGENT_ROLE=green
+      - GOOGLE_API_KEY=${{GOOGLE_API_KEY}}
       - PARTICIPANT_URL=http://{participant_name}:8000
     ports:
       - "8000:8000"
@@ -45,11 +45,18 @@ services:
 
   agentbeats-client:
     image: ghcr.io/agentbeats/agentbeats-client:v1.0.0
+    container_name: agentbeats-client
+    command:
+      - /app/scenario.toml
+      - /app/output/results.json
+    volumes:
+      - ./a2a-scenario.toml:/app/scenario.toml
+      - ./output:/app/output
     depends_on:
       - green-agent
 """
 
-    Path("docker-compose.yml").write_text(compose)
+    Path("docker-compose.yml").write_text(compose.strip())
 
     with open("a2a-scenario.toml", "w") as f:
         f.write(f"""
@@ -59,7 +66,7 @@ endpoint = "http://green-agent:8000"
 [[participants]]
 role = "{participant_name}"
 endpoint = "http://{participant_name}:8000"
-""")
+""".strip())
 
     print("✅ docker-compose.yml y a2a-scenario.toml generados correctamente")
 
