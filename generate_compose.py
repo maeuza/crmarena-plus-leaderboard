@@ -6,7 +6,6 @@ def main():
     parser.add_argument("--scenario", type=Path, required=True)
     args = parser.parse_args()
 
-    # Contenido del Docker Compose corregido
     compose_content = """
 services:
   green-agent:
@@ -35,21 +34,27 @@ services:
     entrypoint: ["/bin/sh", "-c"]
     command: 
       - |
-        echo "-- Preparando entorno --"
-        python3 -m pip install httpx pydantic python-dotenv rich agentified-a2a
+        echo "-- Instalando dependencias base (obligatorias) --"
+        python3 -m pip install --user httpx pydantic python-dotenv rich tomli requests
+        
+        echo "-- Intentando instalar A2A desde GitHub --"
+        python3 -m pip install --user git+https://github.com/agentbeats/agentified-a2a.git || echo "A2A ya podría estar presente o falló la descarga"
+
         echo "-- Iniciando Evaluación CRMArena --"
-        PYTHONPATH=/app/src python3 /app/src/agentbeats/run_scenario.py /app/scenario.toml /app/output/results.json
+        # Añadimos la ruta de pip user al PATH por si acaso
+        export PATH=$PATH:/home/agentbeats/.local/bin
+        export PYTHONPATH=$PYTHONPATH:/app/src:/home/agentbeats/.local/lib/python3.10/site-packages
+        
+        python3 /app/src/agentbeats/run_scenario.py /app/scenario.toml /app/output/results.json
 
 networks:
   agent-network:
     driver: bridge
 """
     
-    # Escribir el archivo docker-compose.yml
     with open("docker-compose.yml", "w") as f:
         f.write(compose_content.strip())
         
-    # Generar el archivo de configuración del escenario para el cliente
     with open("a2a-scenario.toml", "w") as f:
         f.write("""
 [green_agent]
@@ -60,7 +65,7 @@ role = "salesforce_participant"
 endpoint = "http://salesforce_participant:9009"
 """)
 
-    print("✅ docker-compose.yml y a2a-scenario.toml generados con éxito.")
+    print("✅ docker-compose.yml actualizado con instalación forzada.")
 
 if __name__ == "__main__":
     main()
