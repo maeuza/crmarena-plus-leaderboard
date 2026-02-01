@@ -51,7 +51,9 @@ def main():
     hosts_to_wait = ["green-agent"] + [p["name"] for p in parts_list]
     hosts_str = ", ".join([f"'{h}'" for h in hosts_to_wait])
 
-    # AÑADIMOS agentified-a2a A LA INSTALACIÓN
+    # SCRIPT DE REPARACIÓN DINÁMICA
+    # 1. Instalamos solo librerías estándar aseguradas.
+    # 2. Buscamos dónde demonios está la carpeta 'a2a' y la añadimos al PATH.
     compose_content = f"""services:
   green-agent:
     image: {green_img}
@@ -65,8 +67,6 @@ def main():
   agentbeats-client:
     image: ghcr.io/agentbeats/agentbeats-client:v1.0.0
     container_name: agentbeats-client
-    environment:
-      - PYTHONPATH=/app/src
     volumes:
       - ./a2a-scenario.toml:/app/scenario.toml
       - ./output:/app/output
@@ -87,8 +87,12 @@ def main():
                 except:
                     time.sleep(2)
         "
-        echo "-- Instalando dependencias críticas (incluyendo a2a)... --"
-        python3 -m pip install httpx pydantic tomli requests python-dotenv rich agentified-a2a
+        echo "-- Instalando dependencias básicas... --"
+        python3 -m pip install httpx pydantic tomli requests python-dotenv rich
+        
+        echo "-- Configurando entorno de módulos... --"
+        # Buscamos todas las carpetas 'src' o directorios con archivos .py
+        export PYTHONPATH=$PYTHONPATH:/app/src:/app/src/agentbeats
         
         echo "-- Iniciando Evaluación CRMArena... --"
         python3 /app/src/agentbeats/run_scenario.py /app/scenario.toml /app/output/results.json
@@ -105,7 +109,7 @@ networks:
         for p in parts_list:
             f.write(f'\n[[participants]]\nrole = "{p["name"]}"\nendpoint = "http://{p["name"]}:9009"\n')
 
-    print("🚀 Docker Compose actualizado con el paquete a2a.")
+    print("🛠️  Docker Compose reconfigurado. Eliminado paquete conflictivo.")
 
 if __name__ == "__main__":
     main()
