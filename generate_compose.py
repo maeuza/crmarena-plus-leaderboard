@@ -51,8 +51,10 @@ def main():
     hosts_to_wait = ["green-agent"] + [p["name"] for p in parts_list]
     hosts_str = ", ".join([f"'{h}'" for h in hosts_to_wait])
 
-    # CAMBIO CRÍTICO: Usamos 'python3 -m agentbeats.client' en lugar del binario directo
-    # Esto evita el error 'not found' porque Python siempre sabe dónde están sus módulos.
+    # SCRIPT DE EJECUCIÓN DINÁMICO
+    # 1. Espera a los agentes.
+    # 2. Intenta ejecutar 'agentbeats-client'.
+    # 3. Si falla, busca cualquier script python en /app y lo intenta ejecutar.
     compose_content = f"""services:
   green-agent:
     image: {green_img}
@@ -78,17 +80,26 @@ def main():
         import socket, time
         hosts = [{hosts_str}]
         for host in hosts:
-            print(f'-- Buscando {{host}}:9009... --')
             while True:
                 try:
                     with socket.create_connection((host, 9009), timeout=2):
                         print(f'-- {{host}} CONECTADO --')
                         break
-                except Exception:
+                except:
                     time.sleep(2)
         "
-        echo "-- Iniciando Evaluación --"
-        python3 -m agentbeats.client /app/scenario.toml /app/output/results.json
+        echo "-- Intentando ejecutar evaluación --"
+        if command -v agentbeats-client >/dev/null 2>&1; then
+            agentbeats-client /app/scenario.toml /app/output/results.json
+        elif [ -f "/app/main.py" ]; then
+            python3 /app/main.py /app/scenario.toml /app/output/results.json
+        elif [ -f "/usr/local/bin/agentbeats-client" ]; then
+            /usr/local/bin/agentbeats-client /app/scenario.toml /app/output/results.json
+        else
+            echo "ERROR: No se encontró el ejecutable. Contenido de /app:"
+            ls -R /app
+            exit 1
+        fi
 
 networks:
   agent-network:
@@ -102,7 +113,7 @@ networks:
         for p in parts_list:
             f.write(f'\n[[participants]]\nrole = "{p["name"]}"\nendpoint = "http://{p["name"]}:9009"\n')
 
-    print("🚀 docker-compose.yml actualizado con ejecución vía módulo Python.")
+    print("🚀 Docker Compose generado con lógica de auto-descubrimiento.")
 
 if __name__ == "__main__":
     main()
