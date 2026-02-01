@@ -51,8 +51,7 @@ def main():
     hosts_to_wait = ["green-agent"] + [p["name"] for p in parts_list]
     hosts_str = ", ".join([f"'{h}'" for h in hosts_to_wait])
 
-    # SCRIPT DE REPARACIÓN INTEGRAL
-    # Instalamos el set estándar de AgentBeats para evitar goteo de errores
+    # AÑADIMOS agentified-a2a A LA INSTALACIÓN
     compose_content = f"""services:
   green-agent:
     image: {green_img}
@@ -88,8 +87,8 @@ def main():
                 except:
                     time.sleep(2)
         "
-        echo "-- Reparando entorno (Instalando dependencias)... --"
-        python3 -m pip install httpx pydantic tomli requests python-dotenv rich
+        echo "-- Instalando dependencias críticas (incluyendo a2a)... --"
+        python3 -m pip install httpx pydantic tomli requests python-dotenv rich agentified-a2a
         
         echo "-- Iniciando Evaluación CRMArena... --"
         python3 /app/src/agentbeats/run_scenario.py /app/scenario.toml /app/output/results.json
@@ -106,7 +105,7 @@ networks:
         for p in parts_list:
             f.write(f'\n[[participants]]\nrole = "{p["name"]}"\nendpoint = "http://{p["name"]}:9009"\n')
 
-    print("🛠️  Docker Compose actualizado con el combo de dependencias (dotenv incluido).")
+    print("🚀 Docker Compose actualizado con el paquete a2a.")
 
 if __name__ == "__main__":
     main()
