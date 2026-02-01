@@ -1,16 +1,12 @@
 [green_agent]
-# Your Evaluator Agent ID
 agentbeats_id = "019c1809-f7e4-7cc2-8eb7-958e92078fde"
 env = { GOOGLE_API_KEY = "${GOOGLE_API_KEY}", AGENT_ROLE = "green" }
 
 [[participants]]
-# Leave empty for submitters
-agentbeats_id = ""
+agentbeats_id = "019c181e-efc1-7312-b55e-c13cee824550"
 name = "salesforce_participant"
 env = { GOOGLE_API_KEY = "${GOOGLE_API_KEY}", AGENT_ROLE = "purple" }
 
 [config]
-# Benchmark parameters sent to your Green Agent
 domain = "salesforce"
-num_tasks = 5
-dataset_name = "Salesforce/CRMArena"
+num_tasks = 1
