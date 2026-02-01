@@ -51,10 +51,7 @@ def main():
     hosts_to_wait = ["green-agent"] + [p["name"] for p in parts_list]
     hosts_str = ", ".join([f"'{h}'" for h in hosts_to_wait])
 
-    # SCRIPT DE EJECUCIÓN DINÁMICO
-    # 1. Espera a los agentes.
-    # 2. Intenta ejecutar 'agentbeats-client'.
-    # 3. Si falla, busca cualquier script python en /app y lo intenta ejecutar.
+    # El comando ahora apunta directamente al script descubierto y configura el PYTHONPATH
     compose_content = f"""services:
   green-agent:
     image: {green_img}
@@ -68,6 +65,8 @@ def main():
   agentbeats-client:
     image: ghcr.io/agentbeats/agentbeats-client:v1.0.0
     container_name: agentbeats-client
+    environment:
+      - PYTHONPATH=/app/src
     volumes:
       - ./a2a-scenario.toml:/app/scenario.toml
       - ./output:/app/output
@@ -88,18 +87,8 @@ def main():
                 except:
                     time.sleep(2)
         "
-        echo "-- Intentando ejecutar evaluación --"
-        if command -v agentbeats-client >/dev/null 2>&1; then
-            agentbeats-client /app/scenario.toml /app/output/results.json
-        elif [ -f "/app/main.py" ]; then
-            python3 /app/main.py /app/scenario.toml /app/output/results.json
-        elif [ -f "/usr/local/bin/agentbeats-client" ]; then
-            /usr/local/bin/agentbeats-client /app/scenario.toml /app/output/results.json
-        else
-            echo "ERROR: No se encontró el ejecutable. Contenido de /app:"
-            ls -R /app
-            exit 1
-        fi
+        echo "-- Iniciando Evaluación CRMArena... --"
+        python3 /app/src/agentbeats/run_scenario.py /app/scenario.toml /app/output/results.json
 
 networks:
   agent-network:
@@ -113,7 +102,7 @@ networks:
         for p in parts_list:
             f.write(f'\n[[participants]]\nrole = "{p["name"]}"\nendpoint = "http://{p["name"]}:9009"\n')
 
-    print("🚀 Docker Compose generado con lógica de auto-descubrimiento.")
+    print("🚀 Configuración completada. Ejecutando con PYTHONPATH=/app/src")
 
 if __name__ == "__main__":
     main()
