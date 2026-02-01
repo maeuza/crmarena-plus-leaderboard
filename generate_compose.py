@@ -48,12 +48,11 @@ def main():
       - agent-network
 """
 
-    # Definimos los hosts a esperar
     hosts_to_wait = ["green-agent"] + [p["name"] for p in parts_list]
     hosts_str = ", ".join([f"'{h}'" for h in hosts_to_wait])
 
-    # SCRIPT DE ESPERA MEJORADO
-    # Usamos la ruta completa /usr/local/bin/agentbeats-client por seguridad
+    # CAMBIO CRÍTICO: Usamos 'python3 -m agentbeats.client' en lugar del binario directo
+    # Esto evita el error 'not found' porque Python siempre sabe dónde están sus módulos.
     compose_content = f"""services:
   green-agent:
     image: {green_img}
@@ -89,7 +88,7 @@ def main():
                     time.sleep(2)
         "
         echo "-- Iniciando Evaluación --"
-        agentbeats-client /app/scenario.toml /app/output/results.json
+        python3 -m agentbeats.client /app/scenario.toml /app/output/results.json
 
 networks:
   agent-network:
@@ -103,7 +102,7 @@ networks:
         for p in parts_list:
             f.write(f'\n[[participants]]\nrole = "{p["name"]}"\nendpoint = "http://{p["name"]}:9009"\n')
 
-    print("✅ docker-compose.yml generado con éxito.")
+    print("🚀 docker-compose.yml actualizado con ejecución vía módulo Python.")
 
 if __name__ == "__main__":
     main()
