@@ -31,19 +31,19 @@ def main():
     with open(args.scenario, "rb") as f:
         data = toml.load(f)
 
+    # Resolver imágenes de agentes
     green_img = data["green_agent"].get("image") or fetch_agent_image(data["green_agent"].get("agentbeats_id", ""))
     
     parts_list = []
+    participant_services = ""
     for p in data.get("participants", []):
         p_img = p.get("image") or fetch_agent_image(p.get("agentbeats_id", ""))
-        parts_list.append({"name": p["name"], "image": p_img})
-
-    participant_services = ""
-    for p in parts_list:
+        p_name = p["name"]
+        parts_list.append({"name": p_name, "image": p_img})
         participant_services += f"""
-  {p['name']}:
-    image: {p['image']}
-    container_name: {p['name']}
+  {p_name}:
+    image: {p_img}
+    container_name: {p_name}
     environment:
       - GOOGLE_API_KEY=${{GOOGLE_API_KEY}}
       - AGENT_ROLE=purple
@@ -51,16 +51,28 @@ def main():
       - agent-network
 """
 
-    # Preparamos el comando de espera que sugeriste
-    # Esperamos a green-agent y a los participantes antes de iniciar
-    wait_script = "until curl -sf http://green-agent:9009/.well-known/agent-card.json"
-    for p in parts_list:
-        wait_script += f" && curl -sf http://{p['name']}:9009/.well-known/agent-card.json"
+    # SCRIPT DE ESPERA EN PYTHON (Sustituye a curl)
+    # Este script intenta abrir un socket TCP al puerto 9009 de cada agente.
+    wait_logic = (
+        "import socket, time; "
+        "def wait(host): "
+        "  print(f'-- Esperando a {host}:9009 --'); "
+        "  while True: "
+        "    try: "
+        "      with socket.create_connection((host, 9009), timeout=1): "
+        "        print(f'-- {host} conectado! --'); break "
+        "    except: "
+        "      time.sleep(2); "
+    )
     
-    wait_script += "; do echo 'Esperando a que los agentes respondan...'; sleep 2; done; "
-    wait_script += "agentbeats-client /app/scenario.toml /app/output/results.json"
+    # Construimos el comando final
+    python_wait_cmd = f"{wait_logic}wait('green-agent'); "
+    for p in parts_list:
+        python_wait_cmd += f"wait('{p['name']}'); "
+    
+    full_command = f"python3 -c \"{python_wait_cmd}\" && agentbeats-client /app/scenario.toml /app/output/results.json"
 
-    compose = f"""services:
+    compose_content = f"""services:
   green-agent:
     image: {green_img}
     container_name: green-agent
@@ -73,8 +85,7 @@ def main():
   agentbeats-client:
     image: ghcr.io/agentbeats/agentbeats-client:v1.0.0
     container_name: agentbeats-client
-    # Aplicamos tu lógica de espera aquí
-    entrypoint: ["sh", "-c", "{wait_script}"]
+    entrypoint: ["sh", "-c", "{full_command}"]
     volumes:
       - ./a2a-scenario.toml:/app/scenario.toml
       - ./output:/app/output
@@ -85,14 +96,16 @@ networks:
   agent-network:
     driver: bridge
 """
-    Path("docker-compose.yml").write_text(compose)
 
+    Path("docker-compose.yml").write_text(compose_content)
+
+    # Generar el archivo de escenario para el cliente
     with open("a2a-scenario.toml", "w") as f:
         f.write('[green_agent]\nendpoint = "http://green-agent:9009"\n')
         for p in parts_list:
             f.write(f'\n[[participants]]\nrole = "{p["name"]}"\nendpoint = "http://{p["name"]}:9009"\n')
 
-    print("Generación completada con script de espera dinámico.")
+    print("Archivo docker-compose.yml generado con éxito (Python-based wait).")
 
 if __name__ == "__main__":
     main()
