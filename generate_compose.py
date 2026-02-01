@@ -6,7 +6,6 @@ def main():
     parser.add_argument("--scenario", type=Path, required=True)
     args = parser.parse_args()
 
-    # El YAML ahora es más sencillo para evitar errores de red 'undefined'
     compose_content = """
 services:
   green-agent:
@@ -29,19 +28,21 @@ services:
     entrypoint: ["/bin/sh", "-c"]
     command: 
       - |
-        # 1. Instalar dependencias de Python
+        # 1. Instalar dependencias
         python3 -m pip install --user httpx pydantic python-dotenv rich tomli requests -q
 
-        # 2. Descargar la librería a2a usando el propio Python
+        # 2. Descargar a2a usando la URL correcta de la rama principal
         cd /tmp
+        echo "🐍 Descargando librería..."
         python3 -c "import urllib.request; urllib.request.urlretrieve('https://github.com/agentbeats/agentified-a2a/archive/refs/heads/main.tar.gz', 'a2a.tar.gz')"
-        tar -xzf a2a.tar.gz
         
-        # 3. Crear carpeta de librerías y mover el código
+        # 3. Descomprimir y organizar
+        tar -xzf a2a.tar.gz
         mkdir -p /tmp/lib
+        # El nombre de la carpeta al descomprimir suele ser nombre_repo-nombre_rama
         cp -r agentified-a2a-main/src/a2a /tmp/lib/
         
-        # 4. Configurar el camino para que Python lo encuentre
+        # 4. Configurar PYTHONPATH
         export PYTHONPATH=/app/src:/home/agentbeats/.local/lib/python3.10/site-packages:/tmp/lib
         
         echo "⏳ Esperando agentes..."
@@ -54,8 +55,7 @@ services:
     with open("docker-compose.yml", "w") as f:
         f.write(compose_content.strip())
         
-    # El archivo de escenario ahora usa los nombres de servicio por defecto de Docker Compose
-    # que cuando no defines red, es el nombre del servicio tal cual.
+    # IMPORTANTE: Usamos los nombres que Docker Compose asigna por defecto
     with open("a2a-scenario.toml", "w") as f:
         f.write('''
 [green_agent]
