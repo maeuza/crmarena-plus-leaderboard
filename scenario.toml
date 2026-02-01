@@ -1,12 +1,16 @@
 [green_agent]
+# Tu ID de agente evaluador (el que ya tienes)
 agentbeats_id = "019c1809-f7e4-7cc2-8eb7-958e92078fde"
-env = { OPENAI_API_KEY = "${OPENAI_API_KEY}" }
+env = { GOOGLE_API_KEY = "${GOOGLE_API_KEY}", AGENT_ROLE = "green" }
 
 [[participants]]
+# Este es tu ID de participante (púrpura) para la prueba inicial
 agentbeats_id = "019c181e-efc1-7312-b55e-c13cee824550"
 name = "salesforce_participant"
-env = { OPENAI_API_KEY = "${OPENAI_API_KEY}" }
+env = { GOOGLE_API_KEY = "${GOOGLE_API_KEY}", AGENT_ROLE = "purple" }
 
 [config]
+# Parámetros que tu agent.py (Verde) recibirá
 domain = "salesforce"
-num_tasks = 2
+num_tasks = 5
+dataset_name = "Salesforce/CRMArena"
