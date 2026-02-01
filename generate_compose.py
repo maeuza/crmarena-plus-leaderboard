@@ -85,9 +85,8 @@ def main():
       green-agent:
         condition: service_healthy
     command:
-      - sh
-      - -c
-      - |
+        - /app/scenario.toml
+        - /app/output/results.json
         echo "Esperando agentes..."
         until curl -sf http://green-agent:9009/.well-known/agent-card.json; do sleep 2; done
         agentbeats-client /app/scenario.toml /app/output/results.json
