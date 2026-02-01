@@ -6,7 +6,6 @@ def main():
     parser.add_argument("--scenario", type=Path, required=True)
     args = parser.parse_args()
 
-    # Eliminamos las descargas de Git que causan el 404
     compose_content = """
 services:
   green-agent:
@@ -14,9 +13,9 @@ services:
     environment:
       - AGENT_ROLE=green
       - GOOGLE_API_KEY=${GOOGLE_API_KEY}
-      - PARTICIPANT_URL=http://salesforce_participant:8000
+      - PARTICIPANT_URL=http://salesforce_participant:9009
     ports:
-      - "8000:8000"
+      - "8000:9009"
 
   salesforce_participant:
     image: ghcr.io/maeuza/agentified-crmarena:latest
@@ -24,7 +23,7 @@ services:
       - AGENT_ROLE=purple
       - GOOGLE_API_KEY=${GOOGLE_API_KEY}
     ports:
-      - "8001:8000"
+      - "8001:9009"
 
   agentbeats-client:
     image: ghcr.io/agentbeats/agentbeats-client:v1.0.0
@@ -34,22 +33,27 @@ services:
     entrypoint: ["/bin/sh", "-c"]
     command: 
       - |
+        echo "📦 Instalando dependencias de evaluación..."
+        pip install httpx  # <--- ESTO ARREGLA EL ERROR DEL LOG
         echo "⏳ Esperando agentes..."
         sleep 15
         python3 /app/src/agentbeats/run_scenario.py /app/scenario.toml /app/output/results.json
 """
+    
     with open("docker-compose.yml", "w") as f:
         f.write(compose_content.strip())
         
+    # Corregimos los endpoints al puerto 9009 que es donde realmente subió tu app
     with open("a2a-scenario.toml", "w") as f:
         f.write('''
 [green_agent]
-endpoint = "http://green-agent:8000"
+endpoint = "http://green-agent:9009"
 
 [[participants]]
 role = "salesforce_participant"
-endpoint = "http://salesforce_participant:8000"
+endpoint = "http://salesforce_participant:9009"
 ''')
+    print("✅ Archivos actualizados con puerto 9009 e instalador de httpx.")
 
 if __name__ == "__main__":
     main()
