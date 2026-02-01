@@ -34,16 +34,16 @@ services:
     entrypoint: ["/bin/sh", "-c"]
     command: 
       - |
-        echo "-- Instalando dependencias base (obligatorias) --"
+        echo "-- Instalando dependencias base --"
         python3 -m pip install --user httpx pydantic python-dotenv rich tomli requests
         
-        echo "-- Intentando instalar A2A desde GitHub --"
-        python3 -m pip install --user git+https://github.com/agentbeats/agentified-a2a.git || echo "A2A ya podría estar presente o falló la descarga"
-
+        echo "-- Descargando A2A sin Git --"
+        mkdir -p /tmp/a2a
+        curl -L https://github.com/agentbeats/agentified-a2a/archive/refs/heads/main.tar.gz | tar -xz -C /tmp/a2a --strip-components=1
+        
         echo "-- Iniciando Evaluación CRMArena --"
-        # Añadimos la ruta de pip user al PATH por si acaso
-        export PATH=$PATH:/home/agentbeats/.local/bin
-        export PYTHONPATH=$PYTHONPATH:/app/src:/home/agentbeats/.local/lib/python3.10/site-packages
+        # Agregamos la carpeta descargada al PYTHONPATH
+        export PYTHONPATH=$PYTHONPATH:/app/src:/home/agentbeats/.local/lib/python3.10/site-packages:/tmp/a2a/src
         
         python3 /app/src/agentbeats/run_scenario.py /app/scenario.toml /app/output/results.json
 
@@ -65,7 +65,7 @@ role = "salesforce_participant"
 endpoint = "http://salesforce_participant:9009"
 """)
 
-    print("✅ docker-compose.yml actualizado con instalación forzada.")
+    print("✅ docker-compose.yml actualizado con descarga manual de A2A.")
 
 if __name__ == "__main__":
     main()
