@@ -56,21 +56,41 @@ def main():
     green = data["green_agent"]
     parts = data.get("participants", [])
 
-    # Generamos los servicios de los participantes con indentación de 2 espacios
+    # Generamos los servicios de los participantes con Healthcheck
     participant_services = ""
+    participant_names = []
     for p in parts:
+        p_name = p.get('name', 'participant')
+        participant_names.append(p_name)
         participant_services += f"""
-  {p['name']}:
+  {p_name}:
     image: {p['image']}
-    container_name: {p['name']}
+    container_name: {p_name}
     environment:
       - PYTHONUNBUFFERED=1
       - GOOGLE_API_KEY=${{GOOGLE_API_KEY}}
       - AGENT_ROLE=purple
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9009/.well-known/agent-card.json"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
     networks:
       - agent-network"""
 
-    # Estructura del docker-compose.yml (OJO a la indentación debajo de 'services:')
+    # Generamos la lista de dependencias para el cliente
+    depends_on_logic = "\\n".join([f"      {name}:\\n        condition: service_healthy" for name in ["green-agent"] + participant_names])
+    # Limpiamos los saltos de línea para el f-string
+    depends_on_block = f"""
+    depends_on:
+      green-agent:
+        condition: service_healthy"""
+    for name in participant_names:
+        depends_on_block += f"""
+      {name}:
+        condition: service_healthy"""
+
+    # Estructura completa del docker-compose.yml
     compose = f"""services:
   green-agent:
     image: {green['image']}
@@ -79,6 +99,11 @@ def main():
       - PYTHONUNBUFFERED=1
       - GOOGLE_API_KEY=${{GOOGLE_API_KEY}}
       - AGENT_ROLE=green
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9009/.well-known/agent-card.json"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
     networks:
       - agent-network
 {participant_services}
@@ -90,6 +115,7 @@ def main():
     volumes:
       - ./a2a-scenario.toml:/app/scenario.toml
       - ./output:/app/output
+    {depends_on_block}
     networks:
       - agent-network
 
@@ -102,16 +128,16 @@ networks:
 
     # Generar a2a-scenario.toml
     with open("a2a-scenario.toml", "w") as f:
-        f.write("[green_agent]\n")
-        f.write("endpoint = \"http://green-agent:9009\"\n")
+        f.write("[green_agent]\\n")
+        f.write("endpoint = \\"http://green-agent:9009\\"\\n")
         for p in parts:
-            f.write("\n[[participants]]\n")
-            f.write(f"role = \"{p['name']}\"\n")
-            f.write(f"endpoint = \"http://{p['name']}:9009\"\n")
+            f.write("\\n[[participants]]\\n")
+            f.write(f"role = \\"{p['name']}\\"\\n")
+            f.write(f"endpoint = \\"http://{p['name']}:9009\\"\\n")
             if p.get("agentbeats_id"):
-                f.write(f"agentbeats_id = \"{p['agentbeats_id']}\"\n")
+                f.write(f"agentbeats_id = \\"{p['agentbeats_id']}\\"\\n")
 
-    log("Archivos generados correctamente.")
+    log("Generación exitosa con Healthchecks.")
 
 if __name__ == "__main__":
     main()
