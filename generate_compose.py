@@ -6,8 +6,6 @@ def main():
     parser.add_argument("--scenario", type=Path, required=True)
     args = parser.parse_args()
 
-    # Usamos comillas simples triples para el bloque externo
-    # y así evitamos conflictos con las comillas dobles internas
     compose_content = '''
 services:
   green-agent:
@@ -36,14 +34,18 @@ services:
     entrypoint: ["/bin/sh", "-c"]
     command: 
       - |
-        echo "-- Configurando entorno --"
+        echo "-- Instalando dependencias --"
         python3 -m pip install --user httpx pydantic python-dotenv rich tomli requests
         
         echo "-- Descargando A2A --"
-        python3 -c "import urllib.request, tarfile, os; url = 'https://github.com/agentbeats/agentified-a2a/archive/refs/heads/main.tar.gz'; urllib.request.urlretrieve(url, '/tmp/a2a.tar.gz'); tar = tarfile.open('/tmp/a2a.tar.gz', 'r:gz'); tar.extractall('/tmp/a2a_raw'); tar.close(); os.rename('/tmp/a2a_raw/' + os.listdir('/tmp/a2a_raw')[0], '/tmp/a2a')"
+        # Usamos la URL directa del ZIP que es más estable
+        python3 -c "import urllib.request, zipfile, os; url = 'https://github.com/agentbeats/agentified-a2a/archive/refs/heads/main.zip'; urllib.request.urlretrieve(url, '/tmp/a2a.zip'); with zipfile.ZipFile('/tmp/a2a.zip', 'r') as z: z.extractall('/tmp/a2a_raw'); os.rename('/tmp/a2a_raw/' + os.listdir('/tmp/a2a_raw')[0], '/tmp/a2a')"
         
         echo "-- Esperando agentes --"
-        python3 -c "import socket, time; [ (print(f'Esperando {h}...'), [time.sleep(2) while socket.socket().connect_ex((h, 9009)) else None]) for h in ['green-agent', 'salesforce_participant'] ]" || echo "Continuando..."
+        python3 -c "import socket, time; 
+        for h in ['green-agent', 'salesforce_participant']:
+            print(f'Esperando a {h}...');
+            while socket.socket().connect_ex((h, 9009)): time.sleep(2)"
 
         echo "-- Ejecutando Arena --"
         export PYTHONPATH=/app/src:/home/agentbeats/.local/lib/python3.10/site-packages:/tmp/a2a/src
@@ -67,7 +69,7 @@ role = "salesforce_participant"
 endpoint = "http://salesforce_participant:9009"
 ''')
 
-    print("✅ docker-compose.yml generado correctamente.")
+    print("✅ docker-compose.yml generado.")
 
 if __name__ == "__main__":
     main()
