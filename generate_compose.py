@@ -37,12 +37,25 @@ services:
         echo "-- Instalando dependencias base --"
         python3 -m pip install --user httpx pydantic python-dotenv rich tomli requests
         
-        echo "-- Descargando A2A sin Git --"
-        mkdir -p /tmp/a2a
-        curl -L https://github.com/agentbeats/agentified-a2a/archive/refs/heads/main.tar.gz | tar -xz -C /tmp/a2a --strip-components=1
+        echo "-- Descargando A2A usando Python --"
+        python3 -c "
+        import urllib.request
+        import tarfile
+        import os
+        url = 'https://github.com/agentbeats/agentified-a2a/archive/refs/heads/main.tar.gz'
+        path = '/tmp/a2a.tar.gz'
+        print('Descargando...')
+        urllib.request.urlretrieve(url, path)
+        print('Extrayendo...')
+        with tarfile.open(path, 'r:gz') as tar:
+            tar.extractall(path='/tmp/a2a_raw')
+        # Mover contenido para limpiar la ruta
+        os.rename('/tmp/a2a_raw/' + os.listdir('/tmp/a2a_raw')[0], '/tmp/a2a')
+        print('Listo.')
+        "
         
         echo "-- Iniciando Evaluación CRMArena --"
-        # Agregamos la carpeta descargada al PYTHONPATH
+        # Configuramos las rutas de los módulos instalados y descargados
         export PYTHONPATH=$PYTHONPATH:/app/src:/home/agentbeats/.local/lib/python3.10/site-packages:/tmp/a2a/src
         
         python3 /app/src/agentbeats/run_scenario.py /app/scenario.toml /app/output/results.json
@@ -65,7 +78,7 @@ role = "salesforce_participant"
 endpoint = "http://salesforce_participant:9009"
 """)
 
-    print("✅ docker-compose.yml actualizado con descarga manual de A2A.")
+    print("✅ docker-compose.yml actualizado: Descarga vía Python-urllib configurada.")
 
 if __name__ == "__main__":
     main()
