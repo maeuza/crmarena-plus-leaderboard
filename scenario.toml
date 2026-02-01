@@ -1,10 +1,10 @@
 [green_agent]
-agentbeats_id = "019c1809-f7db-7342-9a9a-a7bdbf92e319"
+image = "ghcr.io/tu-org/green-agent:latest"
 env = { GOOGLE_API_KEY = "${GOOGLE_API_KEY}", AGENT_ROLE = "green" }
 
 [[participants]]
-agentbeats_id = ""
 name = "salesforce_participant"
+image = "ghcr.io/tu-org/purple-agent:latest"
 env = { GOOGLE_API_KEY = "${GOOGLE_API_KEY}", AGENT_ROLE = "purple" }
 
 [config]
