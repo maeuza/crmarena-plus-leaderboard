@@ -1,10 +1,24 @@
 import argparse
+import subprocess
 from pathlib import Path
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--scenario", type=Path, required=True)
     args = parser.parse_args()
+
+    # --- PASO NUEVO: Descargamos la librería desde el Workflow, no desde el contenedor ---
+    print("📦 Preparando librería a2a fuera del contenedor...")
+    lib_path = Path("./libs/a2a")
+    if not lib_path.exists():
+        # Clonamos solo la carpeta necesaria usando un truco de git
+        subprocess.run(["mkdir", "-p", "libs"], check=True)
+        subprocess.run([
+            "git", "clone", "--depth", "1", "--filter=blob:none", "--sparse",
+            "https://github.com/agentbeats/agentified-a2a", "libs/repo"
+        ], check=True)
+        subprocess.run(["sh", "-c", "cd libs/repo && git sparse-checkout set src/a2a"], check=True)
+        subprocess.run(["cp", "-r", "libs/repo/src/a2a", "libs/a2a"], check=True)
 
     compose_content = """
 services:
@@ -25,25 +39,15 @@ services:
     volumes:
       - ./a2a-scenario.toml:/app/scenario.toml
       - ./output:/app/output
+      - ./libs:/app/libs  # <-- Pasamos la librería ya descargada
     entrypoint: ["/bin/sh", "-c"]
     command: 
       - |
         # 1. Instalar dependencias
         python3 -m pip install --user httpx pydantic python-dotenv rich tomli requests -q
-
-        # 2. Descargar a2a usando la URL correcta de la rama principal
-        cd /tmp
-        echo "🐍 Descargando librería..."
-        python3 -c "import urllib.request; urllib.request.urlretrieve('https://github.com/agentbeats/agentified-a2a/archive/refs/heads/main.tar.gz', 'a2a.tar.gz')"
         
-        # 3. Descomprimir y organizar
-        tar -xzf a2a.tar.gz
-        mkdir -p /tmp/lib
-        # El nombre de la carpeta al descomprimir suele ser nombre_repo-nombre_rama
-        cp -r agentified-a2a-main/src/a2a /tmp/lib/
-        
-        # 4. Configurar PYTHONPATH
-        export PYTHONPATH=/app/src:/home/agentbeats/.local/lib/python3.10/site-packages:/tmp/lib
+        # 2. Configurar PYTHONPATH para que lea la carpeta /app/libs
+        export PYTHONPATH=/app/src:/home/agentbeats/.local/lib/python3.10/site-packages:/app/libs
         
         echo "⏳ Esperando agentes..."
         sleep 15
@@ -55,7 +59,6 @@ services:
     with open("docker-compose.yml", "w") as f:
         f.write(compose_content.strip())
         
-    # IMPORTANTE: Usamos los nombres que Docker Compose asigna por defecto
     with open("a2a-scenario.toml", "w") as f:
         f.write('''
 [green_agent]
