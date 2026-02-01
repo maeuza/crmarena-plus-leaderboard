@@ -112,10 +112,10 @@ services:
     networks:
       - agent-network
 {services}
-  agentbeats-client:
+agentbeats-client:
     image: ghcr.io/agentbeats/agentbeats-client:v1.0.0
     container_name: agentbeats-client
-    command: ["agentbeats-client", "/app/scenario.toml", "/app/output/output.json"]
+    command: ["/app/scenario.toml", "/app/output/output.json"]
     volumes:
       - ./a2a-scenario.toml:/app/scenario.toml
       - ./output:/app/output
