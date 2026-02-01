@@ -6,6 +6,7 @@ try:
 except ImportError:
     import tomli as toml
 
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--scenario", type=Path, required=True)
@@ -18,18 +19,22 @@ def main():
 
 services:
   green-agent:
-    build: ./green-agent
+    build: .
     container_name: green-agent
     environment:
-      - PARTICIPANT_URL=http://salesforce_participant:9009
+      - AGENT_ROLE=green
+      - PARTICIPANT_URL=http://salesforce_participant:8000
     ports:
-      - "9009:9009"
+      - "8000:8000"
 
   salesforce_participant:
-    build: ./participant
+    build: .
     container_name: salesforce_participant
     environment:
+      - AGENT_ROLE=purple
       - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+    ports:
+      - "8001:8000"
 
   agentbeats-client:
     image: ghcr.io/agentbeats/agentbeats-client:v1.0.0
@@ -43,15 +48,16 @@ services:
         f.write(
             """
 [green_agent]
-endpoint = "http://green-agent:9009"
+endpoint = "http://green-agent:8000"
 
 [[participants]]
 role = "salesforce_participant"
-endpoint = "http://salesforce_participant:9009"
+endpoint = "http://salesforce_participant:8000"
 """
         )
 
-    print("✅ docker-compose.yml y a2a-scenario.toml generados")
+    print("✅ docker-compose.yml y a2a-scenario.toml generados correctamente")
+
 
 if __name__ == "__main__":
     main()
