@@ -4,11 +4,12 @@ on:
   push:
     paths:
       - 'scenario.toml'
+  workflow_dispatch: # Allows manual execution from the Actions tab
 
 jobs:
   run:
     runs-on: ubuntu-latest
-    if: github.event.repository.fork == true || github.ref != 'refs/heads/main'
+    # Removed the 'if' condition that was skipping runs on the main branch
     permissions:
       contents: write
       packages: read
@@ -34,9 +35,6 @@ jobs:
             echo ""
             echo "Error: Failed to pull one or more images."
             echo "Ensure all images are publicly accessible."
-            echo "For ghcr.io images, check package settings at:"
-            echo "  https://github.com/orgs/YOUR_ORG/packages or"
-            echo "  https://github.com/users/YOUR_USER/packages"
             exit 1
           fi
 
@@ -113,14 +111,11 @@ jobs:
 
           Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           git push origin ${{ steps.metadata.outputs.branch_name }}
-          echo "::notice title=Submission Branch Created::Your results are ready for submission on branch: ${{ steps.metadata.outputs.branch_name }}"
 
       - name: Output PR link
         run: |
           echo "### Submit your results" >> $GITHUB_STEP_SUMMARY
           echo "[Click here to open a pull request](https://github.com/${{ steps.target.outputs.repo }}/compare/main...${{ github.repository_owner }}:${{ github.event.repository.name }}:${{ steps.metadata.outputs.branch_name }}?expand=1)" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "⚠️ When creating the PR, UNCHECK 'Allow edits and access to secrets by maintainers' to protect your secrets." >> $GITHUB_STEP_SUMMARY
 
       - name: Cleanup
         if: always()
