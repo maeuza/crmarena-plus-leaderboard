@@ -6,7 +6,8 @@ def main():
     parser.add_argument("--scenario", type=Path, required=True)
     args = parser.parse_args()
 
-    # Configuramos el Docker Compose con la instalación de dependencias en caliente
+    # Definimos el contenido del docker-compose
+    # Corregimos el comando final para que no pase argumentos extra al script
     compose_content = """
 services:
   green-agent:
@@ -34,21 +35,23 @@ services:
     entrypoint: ["/bin/sh", "-c"]
     command: 
       - |
-        echo "📦 Preparando entorno de evaluación..."
-        # Instalamos el SDK de A2A y las utilidades que pide run_scenario.py
+        echo "📦 Instalando dependencias y SDK de A2A..."
         pip install a2a-sdk[http-server] httpx python-dotenv toml litellm
         
-        echo "⏳ Esperando a que los agentes (Green y Purple) inicialicen..."
+        echo "⏳ Esperando a que los agentes estén listos (puerto 8000)..."
         sleep 25
         
-        echo "🚀 Ejecutando CRMArena Challenge..."
-        python3 /app/src/agentbeats/run_scenario.py /app/scenario.toml /app/output/results.json
+        echo "🚀 Iniciando CRMArena Challenge..."
+        # El script solo acepta el archivo .toml como argumento
+        python3 /app/src/agentbeats/run_scenario.py /app/scenario.toml
 """
     
+    # Escribir el archivo docker-compose.yml
     with open("docker-compose.yml", "w") as f:
         f.write(compose_content.strip())
         
-    # Generamos el archivo de escenario para que AgentBeats sepa dónde están los agentes
+    # Generar el archivo de configuración del escenario (a2a-scenario.toml)
+    # Importante: los endpoints deben coincidir con los nombres de los servicios
     with open("a2a-scenario.toml", "w") as f:
         f.write('''
 [green_agent]
@@ -59,7 +62,7 @@ role = "salesforce_participant"
 endpoint = "http://salesforce_participant:8000"
 ''')
 
-    print("✅ Archivos generados: docker-compose.yml y a2a-scenario.toml")
+    print("✅ Archivos generados correctamente: docker-compose.yml y a2a-scenario.toml")
 
 if __name__ == "__main__":
     main()
