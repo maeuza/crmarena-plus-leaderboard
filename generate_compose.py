@@ -6,8 +6,7 @@ def main():
     parser.add_argument("--scenario", type=Path, required=True)
     args = parser.parse_args()
 
-    # Definimos el contenido del docker-compose
-    # Nota: Forzamos la instalación de librerías críticas en el cliente
+    # Configuramos el Docker Compose con la instalación de dependencias en caliente
     compose_content = """
 services:
   green-agent:
@@ -35,19 +34,21 @@ services:
     entrypoint: ["/bin/sh", "-c"]
     command: 
       - |
-        echo "📦 Instalando dependencias del entorno de evaluación..."
-        pip install httpx python-dotenv toml litellm
-        echo "⏳ Esperando a que los agentes estén listos..."
-        sleep 20
-        echo "🚀 Iniciando prueba..."
+        echo "📦 Preparando entorno de evaluación..."
+        # Instalamos el SDK de A2A y las utilidades que pide run_scenario.py
+        pip install a2a-sdk[http-server] httpx python-dotenv toml litellm
+        
+        echo "⏳ Esperando a que los agentes (Green y Purple) inicialicen..."
+        sleep 25
+        
+        echo "🚀 Ejecutando CRMArena Challenge..."
         python3 /app/src/agentbeats/run_scenario.py /app/scenario.toml /app/output/results.json
 """
     
     with open("docker-compose.yml", "w") as f:
         f.write(compose_content.strip())
         
-    # El escenario debe apuntar al puerto 8000 porque tu main.py 
-    # explícitamente usa uvicorn.run(..., port=8000)
+    # Generamos el archivo de escenario para que AgentBeats sepa dónde están los agentes
     with open("a2a-scenario.toml", "w") as f:
         f.write('''
 [green_agent]
@@ -57,7 +58,8 @@ endpoint = "http://green-agent:8000"
 role = "salesforce_participant"
 endpoint = "http://salesforce_participant:8000"
 ''')
-    print("✅ docker-compose.yml y a2a-scenario.toml generados con éxito.")
+
+    print("✅ Archivos generados: docker-compose.yml y a2a-scenario.toml")
 
 if __name__ == "__main__":
     main()
