@@ -6,8 +6,6 @@ def main():
     parser.add_argument("--scenario", type=Path, required=True)
     args = parser.parse_args()
 
-    # Definimos el contenido del docker-compose
-    # Corregimos el comando final para que no pase argumentos extra al script
     compose_content = """
 services:
   green-agent:
@@ -32,26 +30,26 @@ services:
     volumes:
       - ./a2a-scenario.toml:/app/scenario.toml
       - ./output:/app/output
+    environment:
+      # ESTA ES LA CLAVE: Añadimos /app/src para que encuentre el módulo 'agentbeats'
+      - PYTHONPATH=/app/src
     entrypoint: ["/bin/sh", "-c"]
     command: 
       - |
-        echo "📦 Instalando dependencias y SDK de A2A..."
+        echo "📦 Instalando dependencias necesarias..."
         pip install a2a-sdk[http-server] httpx python-dotenv toml litellm
         
-        echo "⏳ Esperando a que los agentes estén listos (puerto 8000)..."
+        echo "⏳ Esperando inicialización de agentes..."
         sleep 25
         
         echo "🚀 Iniciando CRMArena Challenge..."
-        # El script solo acepta el archivo .toml como argumento
+        # Ejecutamos el script directamente
         python3 /app/src/agentbeats/run_scenario.py /app/scenario.toml
 """
     
-    # Escribir el archivo docker-compose.yml
     with open("docker-compose.yml", "w") as f:
         f.write(compose_content.strip())
         
-    # Generar el archivo de configuración del escenario (a2a-scenario.toml)
-    # Importante: los endpoints deben coincidir con los nombres de los servicios
     with open("a2a-scenario.toml", "w") as f:
         f.write('''
 [green_agent]
@@ -62,7 +60,7 @@ role = "salesforce_participant"
 endpoint = "http://salesforce_participant:8000"
 ''')
 
-    print("✅ Archivos generados correctamente: docker-compose.yml y a2a-scenario.toml")
+    print("✅ Archivos generados con PYTHONPATH corregido.")
 
 if __name__ == "__main__":
     main()
