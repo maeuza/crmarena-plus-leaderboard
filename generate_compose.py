@@ -6,6 +6,8 @@ def main():
     parser.add_argument("--scenario", type=Path, required=True)
     args = parser.parse_args()
 
+    # Definimos el contenido del docker-compose
+    # Nota: Forzamos la instalación de librerías críticas en el cliente
     compose_content = """
 services:
   green-agent:
@@ -13,9 +15,9 @@ services:
     environment:
       - AGENT_ROLE=green
       - GOOGLE_API_KEY=${GOOGLE_API_KEY}
-      - PARTICIPANT_URL=http://salesforce_participant:9009
+      - PARTICIPANT_URL=http://salesforce_participant:8000
     ports:
-      - "8000:9009"
+      - "8000:8000"
 
   salesforce_participant:
     image: ghcr.io/maeuza/agentified-crmarena:latest
@@ -23,7 +25,7 @@ services:
       - AGENT_ROLE=purple
       - GOOGLE_API_KEY=${GOOGLE_API_KEY}
     ports:
-      - "8001:9009"
+      - "8001:8000"
 
   agentbeats-client:
     image: ghcr.io/agentbeats/agentbeats-client:v1.0.0
@@ -33,27 +35,29 @@ services:
     entrypoint: ["/bin/sh", "-c"]
     command: 
       - |
-        echo "📦 Instalando dependencias de evaluación..."
-        pip install httpx  # <--- ESTO ARREGLA EL ERROR DEL LOG
-        echo "⏳ Esperando agentes..."
-        sleep 15
+        echo "📦 Instalando dependencias del entorno de evaluación..."
+        pip install httpx python-dotenv toml litellm
+        echo "⏳ Esperando a que los agentes estén listos..."
+        sleep 20
+        echo "🚀 Iniciando prueba..."
         python3 /app/src/agentbeats/run_scenario.py /app/scenario.toml /app/output/results.json
 """
     
     with open("docker-compose.yml", "w") as f:
         f.write(compose_content.strip())
         
-    # Corregimos los endpoints al puerto 9009 que es donde realmente subió tu app
+    # El escenario debe apuntar al puerto 8000 porque tu main.py 
+    # explícitamente usa uvicorn.run(..., port=8000)
     with open("a2a-scenario.toml", "w") as f:
         f.write('''
 [green_agent]
-endpoint = "http://green-agent:9009"
+endpoint = "http://green-agent:8000"
 
 [[participants]]
 role = "salesforce_participant"
-endpoint = "http://salesforce_participant:9009"
+endpoint = "http://salesforce_participant:8000"
 ''')
-    print("✅ Archivos actualizados con puerto 9009 e instalador de httpx.")
+    print("✅ docker-compose.yml y a2a-scenario.toml generados con éxito.")
 
 if __name__ == "__main__":
     main()
