@@ -1,10 +1,10 @@
 [green_agent]
-image = "ghcr.io/tu-org/green-agent:latest"
+image = "ghcr.io/maeuza/agentified-crmarena:latest"
 env = { GOOGLE_API_KEY = "${GOOGLE_API_KEY}", AGENT_ROLE = "green" }
 
 [[participants]]
 name = "salesforce_participant"
-image = "ghcr.io/tu-org/purple-agent:latest"
+image = "ghcr.io/maeuza/agentified-crmarena:latest"
 env = { GOOGLE_API_KEY = "${GOOGLE_API_KEY}", AGENT_ROLE = "purple" }
 
 [config]
