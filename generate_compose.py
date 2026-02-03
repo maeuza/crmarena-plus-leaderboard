@@ -31,7 +31,6 @@ services:
       - ./a2a-scenario.toml:/app/scenario.toml
       - ./output:/app/output
     environment:
-      # ESTA ES LA CLAVE: Añadimos /app/src para que encuentre el módulo 'agentbeats'
       - PYTHONPATH=/app/src
     entrypoint: ["/bin/sh", "-c"]
     command: 
@@ -43,7 +42,6 @@ services:
         sleep 25
         
         echo "🚀 Iniciando CRMArena Challenge..."
-        # Ejecutamos el script directamente
         python3 /app/src/agentbeats/run_scenario.py /app/scenario.toml
 """
     
@@ -60,7 +58,7 @@ role = "salesforce_participant"
 endpoint = "http://salesforce_participant:8000"
 ''')
 
-    print("✅ Archivos generados con PYTHONPATH corregido.")
+    print("✅ Archivos generados correctamente para maeuza/agentified-crmarena")
 
 if __name__ == "__main__":
     main()
