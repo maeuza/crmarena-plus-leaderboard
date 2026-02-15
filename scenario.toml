@@ -1,8 +1,10 @@
 [green_agent]
+agentbeats_id = "019c1809-f7db-7342-9a9a-a7bdbf92e319"
 image = "ghcr.io/maeuza/agentified-crmarena:latest"
 env = { GOOGLE_API_KEY = "${GOOGLE_API_KEY}", AGENT_ROLE = "green" }
 
 [[participants]]
+agentbeats_id = "019c181e-efc1-7312-b55e-c13cee824550"
 name = "salesforce_participant"
 image = "ghcr.io/maeuza/agentified-crmarena:latest"
 env = { GOOGLE_API_KEY = "${GOOGLE_API_KEY}", AGENT_ROLE = "purple" }
